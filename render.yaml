@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: maanmitra
+    name: maanmitra-sih2026-portal
     env: static
     buildCommand: ""
     staticPublishPath: "./"
