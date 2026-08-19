@@ -10,23 +10,22 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ml.preprocessing import clean_text
 from backend.database import init_db, get_db_connection
 
-app = Flask(__name__, static_folder="../frontend/dist", static_url_path="")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DIST_DIR = os.path.abspath(os.path.join(BASE_DIR, "frontend", "dist"))
+
+app = Flask(__name__, static_folder=DIST_DIR, static_url_path="")
 CORS(app)
 
 # Initialize Database
 init_db()
 
-# Paths to models & vectorizers
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(BASE_DIR, "models")
-
 NLP_MODEL_PATH = os.path.join(MODELS_DIR, "nlp_model.pkl")
 TFIDF_PATH = os.path.join(MODELS_DIR, "tfidf_vectorizer.pkl")
 MENTAL_HEALTH_MODEL_PATH = os.path.join(MODELS_DIR, "mental_health_model.pkl")
 NLP_METRICS_PATH = os.path.join(MODELS_DIR, "nlp_metrics.json")
 MH_METRICS_PATH = os.path.join(MODELS_DIR, "mental_health_metrics.json")
 
-# Global variables for loaded models
 nlp_model = None
 tfidf_vectorizer = None
 mental_health_bundle = None
@@ -48,10 +47,8 @@ def load_ml_models():
     except Exception as e:
         print(f"Error loading Mental Health model: {e}")
 
-# Initial load
 load_ml_models()
 
-# High-Risk / Crisis Safety Filter
 CRISIS_KEYWORDS = [
     'suicide', 'kill myself', 'end my life', 'want to die', 'self harm',
     'cut myself', 'ending it all', 'cannot live anymore', 'dont want to live',
@@ -67,8 +64,6 @@ def check_crisis_risk(text):
 
 def derive_sentiment_and_emotion(text, nlp_pred_label=None):
     text_cleaned = clean_text(text)
-    
-    # Emotion mapping fallback/rule boost
     text_lower = text.lower()
     if any(w in text_lower for w in ['stress', 'exam', 'pressure', 'deadline', 'workload', 'overwhelmed']):
         emotion = "Stress"
@@ -117,8 +112,6 @@ def derive_distress_level(emotion, sentiment, mood_input="", is_crisis=False):
     
     mood_lower = str(mood_input).lower()
     if mood_lower in ['sad', 'stressed', 'worried', 'angry', 'lonely', 'tired'] or sentiment == 'Negative':
-        if emotion in ['Anxiety', 'Sadness', 'Stress', 'Anger']:
-            return "MODERATE"
         return "MODERATE"
         
     return "LOW"
@@ -151,7 +144,6 @@ def analyze_text():
     if not text and not mood:
         return jsonify({'error': 'No text or mood provided'}), 400
 
-    # Ensure models are loaded
     if nlp_model is None or tfidf_vectorizer is None:
         load_ml_models()
 
@@ -169,7 +161,6 @@ def analyze_text():
     distress_level = derive_distress_level(emotion, sentiment, mood, is_crisis)
     rec_code, rec_label = derive_recommendation(emotion, distress_level)
 
-    # Descriptive non-diagnostic explanation
     if distress_level == "LOW":
         distress_desc = "Your responses show relatively low distress indicators. Keep up healthy daily routines!"
     elif distress_level == "MODERATE":
@@ -228,8 +219,6 @@ def get_mood_history():
     conn.close()
     
     entries = [dict(r) for r in rows]
-    
-    # Calculate stats
     emotions = [e['emotion'] for e in entries if e.get('emotion')]
     most_common = max(set(emotions), key=emotions.count) if emotions else 'Okay'
     
@@ -341,7 +330,6 @@ def ai_companion_chat():
         ai_response = responses.get(emotion, f"Thank you for sharing how you feel. I am here to support you whenever you need to pause or reflect.")
         action_buttons = [rec_label, "EXPRESS & REFLECT", "I WANT TO TALK"]
         
-    # Log chat history
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('INSERT INTO chat_sessions (sender, message, emotion) VALUES (?, ?, ?)', ('student', message, emotion))
@@ -379,9 +367,7 @@ def risk_check():
 
 @app.route('/api/model-metrics', methods=['GET'])
 def get_model_metrics():
-    # Force reload models metrics if available
     load_ml_models()
-    
     nlp_metrics = {}
     mh_metrics = {}
     
@@ -398,15 +384,23 @@ def get_model_metrics():
         'student_mental_health_evaluation': mh_metrics
     })
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve_frontend(path):
-    dist_dir = os.path.join(BASE_DIR, "frontend", "dist")
-    if path != "" and os.path.exists(os.path.join(dist_dir, path)):
-        return send_from_directory(dist_dir, path)
-    if os.path.exists(os.path.join(dist_dir, "index.html")):
-        return send_from_directory(dist_dir, "index.html")
+# ==================== STATIC & REACT SPA SERVING ====================
+
+@app.route('/')
+def index():
+    if os.path.exists(os.path.join(DIST_DIR, 'index.html')):
+        return send_from_directory(DIST_DIR, 'index.html')
     return jsonify({'status': 'MaanMitra Backend API Running', 'version': '1.0.0'})
+
+@app.route('/<path:path>')
+def serve_static(path):
+    if path.startswith('api/'):
+        return jsonify({'error': 'API endpoint not found'}), 404
+    if os.path.exists(os.path.join(DIST_DIR, path)):
+        return send_from_directory(DIST_DIR, path)
+    if os.path.exists(os.path.join(DIST_DIR, 'index.html')):
+        return send_from_directory(DIST_DIR, 'index.html')
+    return jsonify({'error': 'Page not found'}), 404
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

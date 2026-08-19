@@ -12,9 +12,8 @@ env/
 *.db
 maanmitra.db
 
-# Node dependencies & build
+# Node dependencies
 node_modules/
-dist/
 .vite/
 
 # IDE & system
