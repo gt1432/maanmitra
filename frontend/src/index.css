@@ -199,3 +199,28 @@ body {
 .pulse {
   animation: pulse-gentle 2s infinite;
 }
+
+/* Mobile & PC Responsive Breakpoints */
+@media (max-width: 900px) {
+  .desktop-nav {
+    display: none !important;
+  }
+  .mobile-nav-toggle {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    font-size: 15px;
+  }
+  .glass-card {
+    padding: 20px !important;
+    border-radius: var(--radius-sm) !important;
+  }
+  .btn {
+    width: 100%;
+    padding: 14px 20px !important;
+  }
+}
+
