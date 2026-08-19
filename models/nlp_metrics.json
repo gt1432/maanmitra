@@ -1,0 +1,128 @@
+{
+  "dataset_size": 49610,
+  "train_samples": 39688,
+  "test_samples": 9922,
+  "labels": [
+    "Anxiety",
+    "Depression",
+    "Normal",
+    "Suicidal"
+  ],
+  "best_model": "Logistic Regression",
+  "models_comparison": {
+    "Logistic Regression": {
+      "accuracy": 0.7702,
+      "precision": 0.7666,
+      "recall": 0.7702,
+      "f1_score": 0.7668,
+      "confusion_matrix": [
+        [
+          782,
+          173,
+          120,
+          26
+        ],
+        [
+          92,
+          1970,
+          231,
+          608
+        ],
+        [
+          31,
+          130,
+          3462,
+          55
+        ],
+        [
+          21,
+          557,
+          236,
+          1428
+        ]
+      ],
+      "labels": [
+        "Anxiety",
+        "Depression",
+        "Normal",
+        "Suicidal"
+      ]
+    },
+    "Linear SVM": {
+      "accuracy": 0.7635,
+      "precision": 0.7587,
+      "recall": 0.7635,
+      "f1_score": 0.7599,
+      "confusion_matrix": [
+        [
+          804,
+          149,
+          108,
+          40
+        ],
+        [
+          113,
+          1889,
+          246,
+          653
+        ],
+        [
+          44,
+          123,
+          3449,
+          62
+        ],
+        [
+          38,
+          537,
+          234,
+          1433
+        ]
+      ],
+      "labels": [
+        "Anxiety",
+        "Depression",
+        "Normal",
+        "Suicidal"
+      ]
+    },
+    "Naive Bayes": {
+      "accuracy": 0.7155,
+      "precision": 0.7232,
+      "recall": 0.7155,
+      "f1_score": 0.7136,
+      "confusion_matrix": [
+        [
+          571,
+          331,
+          190,
+          9
+        ],
+        [
+          69,
+          1997,
+          285,
+          550
+        ],
+        [
+          31,
+          358,
+          3185,
+          104
+        ],
+        [
+          12,
+          681,
+          203,
+          1346
+        ]
+      ],
+      "labels": [
+        "Anxiety",
+        "Depression",
+        "Normal",
+        "Suicidal"
+      ]
+    }
+  }
+}
