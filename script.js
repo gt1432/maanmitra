@@ -21,6 +21,21 @@ let motivateSeconds = 900;
 let motivateInterval = null;
 let motivateRunning = false;
 
+// Feature 1: Audio Simulator Configuration & State
+const sleepSounds = {
+  rain: "rain",
+  ocean: "ocean",
+  whiteNoise: "whiteNoise"
+};
+
+let audioCtx = null;
+let activeSoundKey = null; // null | 'rain' | 'ocean' | 'whiteNoise'
+let activeNoiseNode = null;
+let activeGainNode = null;
+let masterGainNode = null;
+let isAudioMuted = false;
+let currentVolume = 0.7;
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
@@ -29,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initChat();
   initJournal();
   initActivities();
+  initSleepAudioSimulator();
   initTrackerCharts();
   initHelpModal();
 
@@ -81,7 +97,6 @@ function initNavigation() {
 }
 
 function navigateToPage(pageId) {
-  // Update nav buttons
   document.querySelectorAll('.nav-item').forEach(btn => {
     if (btn.getAttribute('data-page') === pageId) {
       btn.classList.add('active');
@@ -90,7 +105,6 @@ function navigateToPage(pageId) {
     }
   });
 
-  // Update page sections
   document.querySelectorAll('.page-section').forEach(sec => {
     sec.classList.remove('active');
   });
@@ -101,7 +115,6 @@ function navigateToPage(pageId) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Refresh charts if opening tracker
   if (pageId === 'tracker' || pageId === 'home') {
     updateDashboard();
     renderTrackerCharts();
@@ -130,11 +143,9 @@ function initMoodCheckIn() {
         return;
       }
 
-      // Run Modular Service Function
       const analysis = await analyzeTextService(text, selectedMood);
       renderNLPResultCard(analysis);
 
-      // Save to Mood History in localStorage
       saveMoodEntry({
         mood: selectedMood || analysis.emotion,
         text: text,
@@ -163,7 +174,7 @@ function renderNLPResultCard(res) {
   resultContainer.innerHTML = `
     <div class="glass-card" style="padding: 28px; background: ${res.isCrisis ? '#fff1f2' : 'var(--glass-bg)'}; border: ${res.isCrisis ? '2px solid #f43f5e' : '1px solid var(--primary)'};">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
-        <h3 style="fontSize:1.25rem; font-weight:800; margin:0;">Feeling Analysis & Recommendation</h3>
+        <h3 style="font-size:1.25rem; font-weight:800; margin:0;">Feeling Analysis & Recommendation</h3>
         <div>
           <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:600;">Distress Indicator:</span>
           <span class="badge badge-${res.distressLevel.toLowerCase()}">${res.distressLevel} DISTRESS</span>
@@ -197,7 +208,7 @@ function renderNLPResultCard(res) {
   resultContainer.scrollIntoView({ behavior: 'smooth' });
 }
 
-/* ==================== 4. ACTIVITIES & 8 SUPPORT MODES ==================== */
+/* ==================== 4. ACTIVITIES & SUPPORT MODES ==================== */
 function initActivities() {
   const tabBtns = document.querySelectorAll('.act-tab-btn');
   tabBtns.forEach(btn => {
@@ -369,6 +380,178 @@ function resetMotivateTimer() {
   if (display) display.textContent = '15:00';
 }
 
+/* ==================== FEATURE 1: SLEEP AUDIO SIMULATOR ==================== */
+function initSleepAudioSimulator() {
+  const playBtns = document.querySelectorAll('.sound-play-btn');
+  const pauseAllBtn = document.getElementById('pauseAllAudioBtn');
+  const muteBtn = document.getElementById('muteAudioBtn');
+  const volumeSlider = document.getElementById('audioVolumeSlider');
+
+  playBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const soundKey = btn.getAttribute('data-sound');
+      if (activeSoundKey === soundKey) {
+        // Toggle pause if clicking current playing sound
+        stopActiveAudio();
+      } else {
+        // Play requested sound (automatically stops previous)
+        playSleepSound(soundKey);
+      }
+    });
+  });
+
+  if (pauseAllBtn) {
+    pauseAllBtn.addEventListener('click', () => stopActiveAudio());
+  }
+
+  if (muteBtn) {
+    muteBtn.addEventListener('click', () => toggleAudioMute());
+  }
+
+  if (volumeSlider) {
+    volumeSlider.addEventListener('input', (e) => {
+      currentVolume = parseFloat(e.target.value);
+      if (masterGainNode && audioCtx) {
+        masterGainNode.gain.setValueAtTime(isAudioMuted ? 0 : currentVolume, audioCtx.currentTime);
+      }
+    });
+  }
+}
+
+// Web Audio API Synthesizer for 100% Offline Soothing Noise Generation
+function playSleepSound(soundKey) {
+  stopActiveAudio();
+
+  const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtxClass) {
+    console.warn("Web Audio API not supported.");
+    return;
+  }
+
+  if (!audioCtx) {
+    audioCtx = new AudioCtxClass();
+  } else if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+
+  masterGainNode = audioCtx.createGain();
+  masterGainNode.gain.setValueAtTime(isAudioMuted ? 0 : currentVolume, audioCtx.currentTime);
+  masterGainNode.connect(audioCtx.destination);
+
+  // Generate pink/white noise buffer for rain, ocean, and white noise
+  const bufferSize = audioCtx.sampleRate * 2;
+  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const output = noiseBuffer.getChannelData(0);
+
+  let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
+  for (let i = 0; i < bufferSize; i++) {
+    const white = Math.random() * 2 - 1;
+    if (soundKey === 'rain' || soundKey === 'ocean') {
+      // Pink noise filtering
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+      output[i] *= 0.11;
+      b6 = white * 0.115926;
+    } else {
+      // White noise
+      output[i] = white * 0.15;
+    }
+  }
+
+  activeNoiseNode = audioCtx.createBufferSource();
+  activeNoiseNode.buffer = noiseBuffer;
+  activeNoiseNode.loop = true;
+
+  // Add lowpass filter for soothing tone
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+
+  if (soundKey === 'rain') {
+    filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
+  } else if (soundKey === 'ocean') {
+    filter.frequency.setValueAtTime(400, audioCtx.currentTime);
+    // Add wave swell LFO modulator
+    const lfo = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
+    lfo.frequency.value = 0.12; // wave swell rate
+    lfoGain.gain.value = 300;
+    lfo.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+    lfo.start();
+  } else { // whiteNoise
+    filter.frequency.setValueAtTime(1600, audioCtx.currentTime);
+  }
+
+  activeNoiseNode.connect(filter);
+  filter.connect(masterGainNode);
+  activeNoiseNode.start();
+
+  activeSoundKey = soundKey;
+  updateAudioPlayerUI();
+}
+
+function stopActiveAudio() {
+  if (activeNoiseNode) {
+    try { activeNoiseNode.stop(); } catch(e){}
+    activeNoiseNode.disconnect();
+    activeNoiseNode = null;
+  }
+  activeSoundKey = null;
+  updateAudioPlayerUI();
+}
+
+function toggleAudioMute() {
+  isAudioMuted = !isAudioMuted;
+  const muteBtn = document.getElementById('muteAudioBtn');
+  if (muteBtn) {
+    muteBtn.innerHTML = isAudioMuted ? '🔊 UNMUTE' : '🔇 MUTE';
+  }
+  if (masterGainNode && audioCtx) {
+    masterGainNode.gain.setValueAtTime(isAudioMuted ? 0 : currentVolume, audioCtx.currentTime);
+  }
+}
+
+function updateAudioPlayerUI() {
+  const activeNameElem = document.getElementById('activeSoundName');
+  const visualizerBars = document.getElementById('audioBarsContainer');
+  const playBtns = document.querySelectorAll('.sound-play-btn');
+  const cards = document.querySelectorAll('.audio-track-card');
+
+  cards.forEach(c => c.classList.remove('active-playing'));
+
+  playBtns.forEach(btn => {
+    const sKey = btn.getAttribute('data-sound');
+    if (sKey === activeSoundKey) {
+      btn.innerHTML = '⏸ PAUSE';
+      btn.className = 'btn btn-secondary sound-play-btn';
+      const card = document.getElementById(`card-${sKey}`);
+      if (card) card.classList.add('active-playing');
+    } else {
+      btn.innerHTML = '▶ PLAY';
+      btn.className = 'btn btn-primary sound-play-btn';
+    }
+  });
+
+  const names = {
+    rain: '🌧️ Rain Sounds (Playing)',
+    ocean: '🌊 Ocean Sounds (Playing)',
+    whiteNoise: '🌬️ White Noise (Playing)'
+  };
+
+  if (activeSoundKey && activeNameElem) {
+    activeNameElem.textContent = names[activeSoundKey] || 'Playing';
+    if (visualizerBars) visualizerBars.classList.add('playing');
+  } else if (activeNameElem) {
+    activeNameElem.textContent = 'None (Paused)';
+    if (visualizerBars) visualizerBars.classList.remove('playing');
+  }
+}
+
 /* ==================== 5. AI COMPANION CHAT ==================== */
 function initChat() {
   const sendBtn = document.getElementById('sendChatBtn');
@@ -391,11 +574,9 @@ async function sendUserMessage(customText) {
 
   const messagesContainer = document.getElementById('chatMessages');
 
-  // Append user bubble
   appendChatBubble(messagesContainer, message, 'user');
   if (!customText && input) input.value = '';
 
-  // Show typing indicator
   const typingElem = document.createElement('div');
   typingElem.id = 'typingIndicator';
   typingElem.style.cssText = 'font-style:italic; font-size:0.85rem; color:var(--text-secondary); margin:8px 0;';
@@ -403,7 +584,6 @@ async function sendUserMessage(customText) {
   messagesContainer.appendChild(typingElem);
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-  // Run Vanilla NLP Analysis
   const analysis = await analyzeTextService(message);
 
   setTimeout(() => {
@@ -463,7 +643,7 @@ function showCrisisBanner() {
   if (banner) banner.style.display = 'flex';
 }
 
-/* ==================== 6. PRIVATE JOURNAL ==================== */
+/* ==================== 6. PRIVATE JOURNAL & EXPORT ==================== */
 function initJournal() {
   const saveBtn = document.getElementById('saveJournalBtn');
   const searchInput = document.getElementById('journalSearchInput');
@@ -482,7 +662,7 @@ function initJournal() {
         emotion: analysis.emotion,
         sentiment: analysis.sentiment,
         recommendation: analysis.recommendationLabel,
-        date: new Date().toLocaleString()
+        date: new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })
       };
 
       journalEntries.unshift(entry);
@@ -508,7 +688,7 @@ function renderJournalList(searchTerm = '') {
   const filtered = journalEntries.filter(e => e.content.toLowerCase().includes(searchTerm));
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="text-align:center; color:var(--text-secondary); padding:20px;">No entries found. Write your thoughts above!</div>`;
+    container.innerHTML = `<div style="text-align:center; color:var(--text-secondary); padding:20px;">No entries found. Express your thoughts above!</div>`;
     return;
   }
 
@@ -539,6 +719,115 @@ function deleteJournalEntry(id) {
 
 function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/* ==================== FEATURE 2: JOURNAL EXPORT (TXT & PDF) ==================== */
+function exportJournalTXT() {
+  if (journalEntries.length === 0) {
+    showToast("You don't have any journal entries to export yet.");
+    return;
+  }
+
+  const todayStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  const dateIso = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  let txtContent = `MAANMITRA — MY JOURNAL\n=======================\n\nExported on:\n${todayStr}\n\n`;
+
+  journalEntries.forEach((entry, idx) => {
+    txtContent += `--------------------------------\nEntry ${idx + 1}\nDate: ${entry.date}\nMood: ${entry.emotion}\nEmotion: ${entry.emotion}\n\n"${entry.content}"\n\n`;
+  });
+
+  txtContent += `--------------------------------\n`;
+
+  // Create Blob & Download
+  const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `maanmitra-journal-${dateIso}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  showToast("Your journal has been downloaded successfully.");
+}
+
+function exportJournalPDF() {
+  if (journalEntries.length === 0) {
+    showToast("You don't have any journal entries to export yet.");
+    return;
+  }
+
+  const dateIso = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(13, 148, 136); // Teals #0d9488
+    doc.text("MAANMITRA", 20, 24);
+
+    doc.setFontSize(14);
+    doc.setTextColor(99, 102, 241); // Indigo #6366f1
+    doc.text("My Personal Journal", 20, 32);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Exported on: ${todayStr}`, 20, 40);
+
+    doc.setDrawColor(226, 232, 240);
+    doc.line(20, 44, 190, 44);
+
+    let y = 54;
+    doc.setFontSize(10);
+
+    journalEntries.forEach((entry, idx) => {
+      if (y > 260) {
+        doc.addPage();
+        y = 24;
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 41, 59);
+      doc.text(`Entry ${idx + 1} — ${entry.date} (${entry.emotion})`, 20, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(51, 65, 85);
+      
+      const splitText = doc.splitTextToSize(`"${entry.content}"`, 170);
+      doc.text(splitText, 20, y);
+      y += (splitText.length * 6) + 8;
+
+      doc.setDrawColor(241, 245, 249);
+      doc.line(20, y - 4, 190, y - 4);
+    });
+
+    doc.save(`maanmitra-journal-${dateIso}.pdf`);
+    showToast("Your journal has been downloaded successfully.");
+  } catch (err) {
+    console.error("PDF Export error:", err);
+    // Fallback to text export if jsPDF CDN unavailable
+    exportJournalTXT();
+  }
+}
+
+function showToast(message) {
+  const toast = document.getElementById('toastNotification');
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.classList.add('active');
+
+  setTimeout(() => {
+    toast.classList.remove('active');
+  }, 3500);
 }
 
 /* ==================== 7. MOOD TRACKER & DASHBOARD ==================== */
@@ -573,7 +862,6 @@ function renderTrackerCharts() {
 
   if (typeof Chart === 'undefined') return;
 
-  // Emotion Counts
   const counts = {};
   moodHistory.forEach(e => {
     const emo = e.emotion || 'OKAY';

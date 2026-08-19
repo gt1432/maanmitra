@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="style.css">
   <!-- Chart.js CDN for Visual Interactive Analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF CDN for Client-Side Journal PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -277,6 +279,88 @@
             <span>✔</span> Keep a glass of water near your bedside.
           </div>
         </div>
+
+        <!-- FEATURE 1: HELP ME SLEEP AUDIO SIMULATOR -->
+        <div style="margin-top:36px; padding-top:28px; border-top:1px solid var(--border-color);">
+          <h2 style="font-size:1.6rem; font-weight:800; margin-bottom:4px; text-align:center;">Sleep & Relax</h2>
+          <p style="color:var(--text-secondary); margin-bottom:24px; text-align:center;">Create a calm environment before you rest.</p>
+
+          <!-- Active Sound & Visualizer Status Bar -->
+          <div id="sleepAudioVisualizer" class="glass-card" style="padding:16px 24px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; background:var(--bg-card);">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:0.85rem; color:var(--text-secondary); font-weight:700;">Active Sound:</span>
+              <span id="activeSoundName" style="font-size:0.95rem; font-weight:800; color:var(--primary);">None (Paused)</span>
+            </div>
+            <div class="audio-visualizer-bars" id="audioBarsContainer" aria-label="Audio Visualizer">
+              <span class="audio-bar"></span>
+              <span class="audio-bar"></span>
+              <span class="audio-bar"></span>
+              <span class="audio-bar"></span>
+              <span class="audio-bar"></span>
+            </div>
+          </div>
+
+          <!-- Sound Options List -->
+          <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;">
+            <!-- 🌧️ Rain Sounds -->
+            <div class="glass-card audio-track-card" id="card-rain" style="padding:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span style="font-size:1.8rem;">🌧️</span>
+                <div style="text-align:left;">
+                  <h4 style="font-size:1.05rem; font-weight:800; margin:0;">Rain Sounds</h4>
+                  <span style="font-size:0.78rem; color:var(--text-secondary);">Gentle soothing rainfall</span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <button class="btn btn-primary sound-play-btn" data-sound="rain" aria-label="Play Rain Sounds">▶ PLAY</button>
+              </div>
+            </div>
+
+            <!-- 🌊 Ocean Sounds -->
+            <div class="glass-card audio-track-card" id="card-ocean" style="padding:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span style="font-size:1.8rem;">🌊</span>
+                <div style="text-align:left;">
+                  <h4 style="font-size:1.05rem; font-weight:800; margin:0;">Ocean Sounds</h4>
+                  <span style="font-size:0.78rem; color:var(--text-secondary);">Rhythmic ocean wave swell</span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <button class="btn btn-primary sound-play-btn" data-sound="ocean" aria-label="Play Ocean Sounds">▶ PLAY</button>
+              </div>
+            </div>
+
+            <!-- 🌬️ White Noise -->
+            <div class="glass-card audio-track-card" id="card-whiteNoise" style="padding:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span style="font-size:1.8rem;">🌬️</span>
+                <div style="text-align:left;">
+                  <h4 style="font-size:1.05rem; font-weight:800; margin:0;">White Noise</h4>
+                  <span style="font-size:0.78rem; color:var(--text-secondary);">Calming ambient air hum</span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <button class="btn btn-primary sound-play-btn" data-sound="whiteNoise" aria-label="Play White Noise">▶ PLAY</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Master Controls: Mute, Pause All, Volume Slider -->
+          <div class="glass-card" style="padding:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; background:var(--bg-card);">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <button id="muteAudioBtn" class="btn btn-outline" style="padding:8px 16px; font-size:0.85rem;" aria-label="Mute or Unmute Audio">🔇 MUTE</button>
+              <button id="pauseAllAudioBtn" class="btn btn-secondary" style="padding:8px 16px; font-size:0.85rem;" aria-label="Pause All Audio">⏸ PAUSE ALL</button>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; flex:1; max-width:260px;">
+              <span style="font-size:0.82rem; font-weight:700; color:var(--text-secondary);">Volume</span>
+              <input type="range" id="audioVolumeSlider" min="0" max="1" step="0.05" value="0.7" style="flex:1; cursor:pointer;" aria-label="Audio Volume Slider">
+            </div>
+          </div>
+
+          <p style="text-align:center; font-size:0.78rem; color:var(--text-muted); margin-top:16px;">
+            Audio is for relaxation purposes only.
+          </p>
+        </div>
       </div>
 
       <!-- 6. I WANT TO TALK -->
@@ -319,13 +403,21 @@
       </div>
     </div>
 
-    <div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <h3 style="font-size:1.4rem; font-weight:800;">Past Journal Entries</h3>
-        <input type="text" id="journalSearchInput" placeholder="🔍 Search entries..." style="padding:8px 14px; border-radius:9999px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); outline:none;">
-      </div>
-
       <div id="journalEntriesList"></div>
+
+      <!-- FEATURE 2: EXPORT MY JOURNAL CARD -->
+      <div class="glass-card" style="padding:28px; margin-top:32px; background:linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(13, 148, 136, 0.1) 100%); border:1px solid var(--secondary);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+          <div>
+            <h3 style="font-size:1.3rem; font-weight:800; margin-bottom:4px;">Export My Journal</h3>
+            <p style="color:var(--text-secondary); font-size:0.9rem; margin:0;">Keep a personal offline copy of your reflections.</p>
+          </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button onclick="exportJournalTXT()" class="btn btn-primary" aria-label="Download Journal as TXT File">📄 DOWNLOAD TXT</button>
+            <button onclick="exportJournalPDF()" class="btn btn-secondary" aria-label="Download Journal as PDF Document">📕 DOWNLOAD PDF</button>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -530,6 +622,9 @@
       <span style="font-size:0.75rem; opacity:0.8;">Disclaimer: MaanMitra is a digital emotional-support tool and does not provide medical diagnosis or replace professional care.</span>
     </div>
   </footer>
+
+  <!-- Toast Notification Container -->
+  <div id="toastNotification" class="toast-notification" aria-live="polite"></div>
 
   <!-- Application Logic Scripts -->
   <script src="data/sample-data.js"></script>
