@@ -3,14 +3,14 @@ import sys
 import json
 import re
 import joblib
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ml.preprocessing import clean_text
 from backend.database import init_db, get_db_connection
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="../frontend/dist", static_url_path="")
 CORS(app)
 
 # Initialize Database
@@ -398,5 +398,16 @@ def get_model_metrics():
         'student_mental_health_evaluation': mh_metrics
     })
 
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_frontend(path):
+    dist_dir = os.path.join(BASE_DIR, "frontend", "dist")
+    if path != "" and os.path.exists(os.path.join(dist_dir, path)):
+        return send_from_directory(dist_dir, path)
+    if os.path.exists(os.path.join(dist_dir, "index.html")):
+        return send_from_directory(dist_dir, "index.html")
+    return jsonify({'status': 'MaanMitra Backend API Running', 'version': '1.0.0'})
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
