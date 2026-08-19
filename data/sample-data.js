@@ -73,8 +73,8 @@ const NEGATIVE_KEYWORDS = [
 // Safety System High-Risk Crisis Detection Keywords
 const CRISIS_KEYWORDS = [
   "suicide", "kill myself", "self harm", "hurt myself", "end my life",
-  "want to die", "ending it all", "take my life", "better off dead",
-  "don't want to live", "cannot live anymore"
+  "ending my life", "end life", "want to die", "ending it all", "take my life",
+  "better off dead", "don't want to live", "cannot live anymore"
 ];
 
 // Student Humor Jokes List for MAKE ME LAUGH
