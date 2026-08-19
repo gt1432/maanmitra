@@ -13,7 +13,7 @@ from backend.database import init_db, get_db_connection
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST_DIR = os.path.abspath(os.path.join(BASE_DIR, "frontend", "dist"))
 
-app = Flask(__name__, static_folder=DIST_DIR, static_url_path="")
+app = Flask(__name__, static_folder=DIST_DIR)
 CORS(app)
 
 # Initialize Database
@@ -393,10 +393,11 @@ def index():
     return jsonify({'status': 'MaanMitra Backend API Running', 'version': '1.0.0'})
 
 @app.route('/<path:path>')
-def serve_static(path):
+def catch_all(path):
     if path.startswith('api/'):
         return jsonify({'error': 'API endpoint not found'}), 404
-    if os.path.exists(os.path.join(DIST_DIR, path)):
+    file_path = os.path.join(DIST_DIR, path)
+    if os.path.exists(file_path):
         return send_from_directory(DIST_DIR, path)
     if os.path.exists(os.path.join(DIST_DIR, 'index.html')):
         return send_from_directory(DIST_DIR, 'index.html')
